@@ -65,7 +65,7 @@ soc-detection-lab-wazuh/
 
 | Fase | Entregable Principal | Estado |
 | :--- | :--- | :--- |
-| **Fase 1** | Cimientos Git, segmentación de red *Host-Only* y clúster Wazuh en Docker | En progreso |
+| **Fase 1** | Cimientos Git, segmentación de red *Host-Only* y clúster Wazuh en Docker ([Evidencia](docs/evidence/phase1_cluster_health.md)) | Completada |
 | **Fase 2** | Instrumentación avanzada de endpoints (Windows Sysmon + Linux Auditd) | Pendiente |
 | **Fase 3** | Emulación controlada de 5 técnicas MITRE ATT&CK y casos de prueba | Pendiente |
 | **Fase 4** | Reglas Sigma + traducción Wazuh XML + validación `wazuh-logtest` | Pendiente |
