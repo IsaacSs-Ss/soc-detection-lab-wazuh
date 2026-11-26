@@ -1,0 +1,16 @@
+<!-- ==========================================================================
+     Reglas Personalizadas de Detección — Laboratorio SOC & Detection Engineering
+     Rango reservado para reglas locales: IDs 100001 - 100099
+     Las 5 reglas derivadas de Sigma (MITRE ATT&CK) se implementan en Fase 4
+     y sus excepciones quirúrgicas de calibración en Fase 5.
+     ========================================================================== -->
+<group name="local,soc_lab,">
+
+  <!-- Regla centinela inicial (ID 100099 dentro del rango reservado 100001-100099)
+       para verificar carga correcta del archivo local_rules.xml (Detection-as-Code). -->
+  <rule id="100099" level="3">
+    <if_sid>502</if_sid>
+    <description>SOC Lab: Wazuh Manager iniciado con ruleset personalizado Detection-as-Code activo.</description>
+  </rule>
+
+</group>

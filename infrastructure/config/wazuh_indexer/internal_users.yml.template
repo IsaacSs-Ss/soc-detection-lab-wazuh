@@ -1,0 +1,20 @@
+---
+# Plantilla de usuarios internos de OpenSearch Security (Wazuh Indexer).
+# El script `infrastructure/scripts/setup-lab-env.ps1` genera `internal_users.yml`
+# sustituyendo los marcadores con hashes bcrypt únicos generados localmente.
+
+_meta:
+  type: "internalusers"
+  config_version: 2
+
+admin:
+  hash: "{{ADMIN_BCRYPT_HASH}}"
+  reserved: true
+  backend_roles:
+    - "admin"
+  description: "SOC Lab admin user (local generated hash)"
+
+kibanaserver:
+  hash: "{{DASHBOARD_BCRYPT_HASH}}"
+  reserved: true
+  description: "OpenSearch Dashboards internal service account (local generated hash)"
