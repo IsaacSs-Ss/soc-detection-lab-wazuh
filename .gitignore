@@ -1,0 +1,67 @@
+# =============================================================================
+# SOC Detection Engineering & Automated Triage Lab — Git Security Hygiene
+# =============================================================================
+
+# 1. Secretos y variables de entorno locales (NUNCA versionar credenciales reales)
+.env
+.env.*
+!.env.example
+
+# 2. Certificados TLS/SSL privados, hashes internos generados y claves de Wazuh
+*.pem
+*.key
+*.crt
+*.csr
+*.p12
+*.pfx
+client.keys
+infrastructure/config/wazuh_indexer_ssl_certs/
+infrastructure/certs/
+infrastructure/config/wazuh_indexer/internal_users.yml
+infrastructure/config/wazuh_dashboard/wazuh.yml
+
+# 3. Telemetría cruda sin sanitizar y volcados locales de eventos
+*.evtx
+*.pcap
+*.pcapng
+alerts.json
+archives.json
+archives.log
+ossec.log
+raw_logs/
+*.dmp
+
+# 4. Caché local de Threat Intelligence y reportes temporales de ejecución
+*.db
+*.sqlite
+*.sqlite3
+cti_cache.json
+automation/output/
+
+# 5. Entornos virtuales y artefactos de Python / Testing / Linters
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+dist/
+build/
+*.egg-info/
+
+# 6. Notas locales y borradores personales de estudio
+.notes/
+
+# 7. Archivos de sistema operativo e IDEs
+.DS_Store
+Thumbs.db
+Desktop.ini
+.vscode/
+.idea/
+*.swp
+*~

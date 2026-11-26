@@ -1,0 +1,121 @@
+name: SOC Detection-as-Code & Triage CI
+
+on:
+  push:
+    branches: [main, "feat/**", "fix/**", "docs/**", "test/**"]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  validate-configs-and-rules:
+    name: YAML, XML & Sigma Syntax Validation
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install YAML and XML validators
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq libxml2-utils
+          python -m pip install --upgrade pip pyyaml
+
+      - name: Validate YAML files (Docker Compose, Infrastructure & Sigma Rules)
+        run: |
+          python - <<'EOF'
+          import pathlib, sys, yaml
+
+          roots = [
+              pathlib.Path(".github/workflows"),
+              pathlib.Path("infrastructure"),
+              pathlib.Path("detections/sigma"),
+          ]
+          yaml_files = []
+          for root in roots:
+              if root.exists():
+                  yaml_files.extend(sorted(root.rglob("*.yml")))
+                  yaml_files.extend(sorted(root.rglob("*.yaml")))
+
+          if not yaml_files:
+              print("No YAML files found to validate.")
+              sys.exit(0)
+
+          for path in yaml_files:
+              with path.open("r", encoding="utf-8") as fh:
+                  list(yaml.safe_load_all(fh))
+              print(f"[OK] YAML valid: {path}")
+          EOF
+
+      - name: Validate XML & Wazuh Configuration Syntax
+        run: |
+          set -e
+          for xml_file in $(find infrastructure detections -type f -name "*.xml" 2>/dev/null); do
+            # Wazuh rule files may contain multiple top-level <group> blocks; wrap for strict XML validation
+            wrapped=$(mktemp)
+            printf "<wazuh_root>\n%s\n</wazuh_root>\n" "$(cat "$xml_file")" > "$wrapped"
+            xmllint --noout "$wrapped"
+            rm -f "$wrapped"
+            echo "[OK] XML valid: $xml_file"
+          done
+
+          for conf_file in $(find infrastructure -type f -name "*.conf" 2>/dev/null); do
+            wrapped=$(mktemp)
+            printf "<wazuh_conf_root>\n%s\n</wazuh_conf_root>\n" "$(cat "$conf_file")" > "$wrapped"
+            xmllint --noout "$wrapped"
+            rm -f "$wrapped"
+            echo "[OK] Wazuh conf XML valid: $conf_file"
+          done
+
+  secret-and-hygiene-audit:
+    name: Secret Leakage & Hygiene Guard
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Verify no tracked .env, private keys, or default Wazuh passwords
+        run: |
+          set -e
+          if git ls-files | grep -E '(^|/)\.env$|(^|/)(internal_users|wazuh)\.yml$|\.(pem|key|pfx|p12)$'; then
+            echo "::error::Sensitive environment, user hash, or certificate file is tracked in Git!"
+            exit 1
+          fi
+
+          if grep -rnE 'SecretPassword|MyS3cr37P450r|BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY' \
+              --exclude-dir=.git \
+              --exclude="ci-validation.yml" \
+              --exclude="ARCHITECTURE.md" .; then
+            echo "::error::Hardcoded default credential or private key pattern detected!"
+            exit 1
+          fi
+          echo "[OK] Repository passed zero-secrets and hygiene audit."
+
+  python-triage-tests:
+    name: Python Linter (Ruff) & Unit Tests (Pytest)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run Ruff and Pytest (when Phase 6 module is present)
+        run: |
+          if [ -f "automation/requirements.txt" ]; then
+            python -m pip install --upgrade pip ruff pytest
+            python -m pip install -r automation/requirements.txt
+            ruff check automation/
+            pytest automation/tests/ -v
+          else
+            echo "Phase 6 Python SOAR module not yet initialized; skipping pytest."
+          fi
