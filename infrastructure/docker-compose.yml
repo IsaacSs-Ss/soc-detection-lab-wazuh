@@ -138,6 +138,29 @@ services:
     networks:
       - soc_internal_net
 
+  linux.endpoint:
+    build:
+      context: ./linux-endpoint
+      dockerfile: Dockerfile
+    image: soc-lab/linux-endpoint:4.9.2
+    container_name: soc-linux-endpoint
+    hostname: soc-linux-endpoint
+    restart: unless-stopped
+    cap_add:
+      - AUDIT_CONTROL
+      - AUDIT_WRITE
+    depends_on:
+      wazuh.manager:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -x wazuh-agentd >/dev/null 2>&1 && (pgrep -x sshd >/dev/null 2>&1 || pgrep -f '/usr/sbin/sshd' >/dev/null 2>&1) && pgrep -x rsyslogd >/dev/null 2>&1"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+      start_period: 25s
+    networks:
+      - soc_internal_net
+
 networks:
   soc_internal_net:
     name: soc_internal_net

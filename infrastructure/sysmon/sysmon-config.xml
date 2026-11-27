@@ -1,0 +1,325 @@
+<!--
+  =============================================================================
+  Proyecto: Laboratorio SOC, Detection Engineering y Triaje Automatizado
+  Archivo:  infrastructure/sysmon/sysmon-config.xml
+  Autor:    Isaac Sánchez Samaniego
+  Objetivo: Configuración modular de Microsoft Sysmon (Esquema 4.90) orientada
+            a visibilidad profunda de endpoint Windows con filtrado de ruido
+            en origen para alimentar Wazuh SIEM/XDR v4.9.2.
+  =============================================================================
+  Cobertura de telemetría instrumentada:
+    * Event ID 1  (ProcessCreate):  Creación de procesos, SHA-256, CommandLine y árbol padre.
+    * Event ID 3  (NetworkConnect): Conexiones TCP/UDP salientes de rutas de usuario y LOLBins.
+    * Event ID 10 (ProcessAccess):  Apertura de manejadores hacia lsass.exe (T1003.001).
+    * Event ID 11 (FileCreate):     Escritura de ejecutables, scripts y tareas programadas.
+    * Event ID 13 (RegistryEvent):  Persistencia en claves CurrentVersion\Run y RunOnce.
+    * Event ID 22 (DnsQuery):       Consultas DNS atribuidas por proceso origen.
+  =============================================================================
+-->
+<Sysmon schemaversion="4.90">
+  <!-- Cálculo exclusivo de SHA-256 para minimizar sobrecarga de CPU/IOPS y estandarizar IoCs -->
+  <HashAlgorithms>SHA256</HashAlgorithms>
+
+  <!-- Deshabilitado para operar en segmento aislado Host-Only (VMnet1) sin tráfico CRL/OCSP saliente -->
+  <CheckRevocation>false</CheckRevocation>
+
+  <!-- Captura de metadatos DNS sin forzar resolución inversa adicional desde el driver -->
+  <DnsLookup>false</DnsLookup>
+
+  <EventFiltering>
+
+    <!-- =================================================================== -->
+    <!-- MÓDULO 1: Sysmon Event ID 1 (ProcessCreate)                         -->
+    <!-- Estrategia: Registrar toda creación de procesos (ruta completa,     -->
+    <!-- SHA256, CommandLine, ParentImage y ParentCommandLine) excluyendo    -->
+    <!-- únicamente tareas internas ruidosas del sistema operativo mediante  -->
+    <!-- condiciones compuestas. Jamás se excluyen intérpretes ni LOLBins    -->
+    <!-- (powershell.exe, pwsh.exe, cmd.exe, schtasks.exe, reg.exe,          -->
+    <!-- rundll32.exe, mshta.exe, wscript.exe, cscript.exe, certutil.exe).   -->
+    <!-- Técnicas objetivo: T1059.001, T1053.005, T1547.001.                 -->
+    <!-- =================================================================== -->
+    <RuleGroup name="Sysmon_EID1_ProcessCreate" groupRelation="or">
+      <ProcessCreate onmatch="exclude">
+        <Rule name="Noise_Windows_AudioEngine" groupRelation="and">
+          <Image condition="is">C:\Windows\System32\audiodg.exe</Image>
+          <ParentImage condition="is">C:\Windows\System32\svchost.exe</ParentImage>
+        </Rule>
+        <Rule name="Noise_Windows_SearchProtocolHost" groupRelation="and">
+          <Image condition="is">C:\Windows\System32\SearchProtocolHost.exe</Image>
+          <ParentImage condition="is">C:\Windows\System32\SearchIndexer.exe</ParentImage>
+        </Rule>
+        <Rule name="Noise_Windows_SearchFilterHost" groupRelation="and">
+          <Image condition="is">C:\Windows\System32\SearchFilterHost.exe</Image>
+          <ParentImage condition="is">C:\Windows\System32\SearchIndexer.exe</ParentImage>
+        </Rule>
+        <Rule name="Noise_Windows_BackgroundTaskHost" groupRelation="and">
+          <Image condition="is">C:\Windows\System32\backgroundTaskHost.exe</Image>
+          <ParentImage condition="is">C:\Windows\System32\svchost.exe</ParentImage>
+        </Rule>
+      </ProcessCreate>
+    </RuleGroup>
+
+    <!-- =================================================================== -->
+    <!-- MÓDULO 2: Sysmon Event ID 3 (NetworkConnect)                        -->
+    <!-- Estrategia: Capturar conexiones de red salientes (Initiated=true)   -->
+    <!-- originadas desde directorios escribibles por el usuario (Users,     -->
+    <!-- ProgramData, Temp, Public, AppData) o binarios nativos susceptibles -->
+    <!-- de abuso para descarga de carga útil, C2 o exfiltración (LOLBins).  -->
+    <!-- =================================================================== -->
+    <RuleGroup name="Sysmon_EID3_NetworkConnect" groupRelation="or">
+      <NetworkConnect onmatch="include">
+        <!-- Procesos ejecutándose desde rutas de usuario o temporales -->
+        <Rule name="NetOut_Path_Users" groupRelation="and">
+          <Initiated condition="is">true</Initiated>
+          <Image condition="begin with">C:\Users\</Image>
+        </Rule>
+        <Rule name="NetOut_Path_ProgramData" groupRelation="and">
+          <Initiated condition="is">true</Initiated>
+          <Image condition="begin with">C:\ProgramData\</Image>
+        </Rule>
+        <Rule name="NetOut_Path_WindowsTemp" groupRelation="and">
+          <Initiated condition="is">true</Initiated>
+          <Image condition="begin with">C:\Windows\Temp\</Image>
+        </Rule>
+        <Rule name="NetOut_Path_GenericTemp" groupRelation="and">
+          <Initiated condition="is">true</Initiated>
+          <Image condition="contains">\Temp\</Image>
+        </Rule>
+        <Rule name="NetOut_Path_Public" groupRelation="and">
+          <Initiated condition="is">true</Initiated>
+          <Image condition="begin with">C:\Users\Public\</Image>
+        </Rule>
+        <!-- Intérpretes y binarios nativos de Windows (LOLBins) -->
+        <Rule name="NetOut_LOLBin_PowerShell" groupRelation="and">
+          <Initiated condition="is">true</Initiated>
+          <Image condition="end with">\powershell.exe</Image>
+        </Rule>
+        <Rule name="NetOut_LOLBin_Pwsh" groupRelation="and">
+          <Initiated condition="is">true</Initiated>
+          <Image condition="end with">\pwsh.exe</Image>
+        </Rule>
+        <Rule name="NetOut_LOLBin_Cmd" groupRelation="and">
+          <Initiated condition="is">true</Initiated>
+          <Image condition="end with">\cmd.exe</Image>
+        </Rule>
+        <Rule name="NetOut_LOLBin_Mshta" groupRelation="and">
+          <Initiated condition="is">true</Initiated>
+          <Image condition="end with">\mshta.exe</Image>
+        </Rule>
+        <Rule name="NetOut_LOLBin_Rundll32" groupRelation="and">
+          <Initiated condition="is">true</Initiated>
+          <Image condition="end with">\rundll32.exe</Image>
+        </Rule>
+        <Rule name="NetOut_LOLBin_Regsvr32" groupRelation="and">
+          <Initiated condition="is">true</Initiated>
+          <Image condition="end with">\regsvr32.exe</Image>
+        </Rule>
+        <Rule name="NetOut_LOLBin_Certutil" groupRelation="and">
+          <Initiated condition="is">true</Initiated>
+          <Image condition="end with">\certutil.exe</Image>
+        </Rule>
+        <Rule name="NetOut_LOLBin_Bitsadmin" groupRelation="and">
+          <Initiated condition="is">true</Initiated>
+          <Image condition="end with">\bitsadmin.exe</Image>
+        </Rule>
+        <Rule name="NetOut_LOLBin_Wscript" groupRelation="and">
+          <Initiated condition="is">true</Initiated>
+          <Image condition="end with">\wscript.exe</Image>
+        </Rule>
+        <Rule name="NetOut_LOLBin_Cscript" groupRelation="and">
+          <Initiated condition="is">true</Initiated>
+          <Image condition="end with">\cscript.exe</Image>
+        </Rule>
+        <Rule name="NetOut_LOLBin_Wmic" groupRelation="and">
+          <Initiated condition="is">true</Initiated>
+          <Image condition="end with">\wmic.exe</Image>
+        </Rule>
+        <Rule name="NetOut_LOLBin_Msiexec" groupRelation="and">
+          <Initiated condition="is">true</Initiated>
+          <Image condition="end with">\msiexec.exe</Image>
+        </Rule>
+        <Rule name="NetOut_LOLBin_Curl" groupRelation="and">
+          <Initiated condition="is">true</Initiated>
+          <Image condition="end with">\curl.exe</Image>
+        </Rule>
+        <Rule name="NetOut_LOLBin_Reg" groupRelation="and">
+          <Initiated condition="is">true</Initiated>
+          <Image condition="end with">\reg.exe</Image>
+        </Rule>
+        <Rule name="NetOut_LOLBin_Schtasks" groupRelation="and">
+          <Initiated condition="is">true</Initiated>
+          <Image condition="end with">\schtasks.exe</Image>
+        </Rule>
+      </NetworkConnect>
+    </RuleGroup>
+
+    <!-- =================================================================== -->
+    <!-- MÓDULO 3: Sysmon Event ID 10 (ProcessAccess)                        -->
+    <!-- Estrategia: Monitorear toda apertura de manejadores dirigida hacia  -->
+    <!-- lsass.exe. Deliberadamente se evita sobre-excluir procesos del      -->
+    <!-- sistema (como MsMpEng.exe, svchost.exe o wmiprvse.exe) en el origen -->
+    <!-- para medir la línea base real en el SIEM y diseñar excepciones      -->
+    <!-- quirúrgicas auditables en Wazuh durante la Fase 5 (Tuning).         -->
+    <!-- Técnica objetivo: T1003.001 (OS Credential Dumping: LSASS Memory).  -->
+    <!-- =================================================================== -->
+    <RuleGroup name="Sysmon_EID10_ProcessAccess_LSASS" groupRelation="or">
+      <ProcessAccess onmatch="include">
+        <TargetImage condition="is">C:\Windows\System32\lsass.exe</TargetImage>
+      </ProcessAccess>
+    </RuleGroup>
+
+    <!-- =================================================================== -->
+    <!-- MÓDULO 4: Sysmon Event ID 11 (FileCreate)                           -->
+    <!-- Estrategia: Detectar escritura en disco de artefactos ejecutables,  -->
+    <!-- bibliotecas, scripts e instaladores en directorios de riesgo        -->
+    <!-- (Temp, AppData, Public) y creación de definiciones de tareas        -->
+    <!-- programadas en rutas del sistema.                                   -->
+    <!-- Técnica apoyo: T1053.005 (Scheduled Task), staging de payloads.     -->
+    <!-- =================================================================== -->
+    <RuleGroup name="Sysmon_EID11_FileCreate_Include" groupRelation="or">
+      <FileCreate onmatch="include">
+        <!-- Rutas críticas de tareas programadas y directorios compartidos/temporales -->
+        <TargetFilename condition="begin with">C:\Windows\System32\Tasks\</TargetFilename>
+        <TargetFilename condition="begin with">C:\Windows\SysWOW64\Tasks\</TargetFilename>
+        <TargetFilename condition="begin with">C:\Windows\Tasks\</TargetFilename>
+        <TargetFilename condition="begin with">C:\Users\Public\</TargetFilename>
+        <TargetFilename condition="begin with">C:\Windows\Temp\</TargetFilename>
+        <!-- Ejecutables y scripts en Temp del perfil de usuario -->
+        <Rule name="FileCreate_Temp_Exe" groupRelation="and">
+          <TargetFilename condition="contains">\Temp\</TargetFilename>
+          <TargetFilename condition="end with">.exe</TargetFilename>
+        </Rule>
+        <Rule name="FileCreate_Temp_Dll" groupRelation="and">
+          <TargetFilename condition="contains">\Temp\</TargetFilename>
+          <TargetFilename condition="end with">.dll</TargetFilename>
+        </Rule>
+        <Rule name="FileCreate_Temp_Ps1" groupRelation="and">
+          <TargetFilename condition="contains">\Temp\</TargetFilename>
+          <TargetFilename condition="end with">.ps1</TargetFilename>
+        </Rule>
+        <Rule name="FileCreate_Temp_Bat" groupRelation="and">
+          <TargetFilename condition="contains">\Temp\</TargetFilename>
+          <TargetFilename condition="end with">.bat</TargetFilename>
+        </Rule>
+        <Rule name="FileCreate_Temp_Cmd" groupRelation="and">
+          <TargetFilename condition="contains">\Temp\</TargetFilename>
+          <TargetFilename condition="end with">.cmd</TargetFilename>
+        </Rule>
+        <Rule name="FileCreate_Temp_Vbs" groupRelation="and">
+          <TargetFilename condition="contains">\Temp\</TargetFilename>
+          <TargetFilename condition="end with">.vbs</TargetFilename>
+        </Rule>
+        <Rule name="FileCreate_Temp_Js" groupRelation="and">
+          <TargetFilename condition="contains">\Temp\</TargetFilename>
+          <TargetFilename condition="end with">.js</TargetFilename>
+        </Rule>
+        <Rule name="FileCreate_Temp_Hta" groupRelation="and">
+          <TargetFilename condition="contains">\Temp\</TargetFilename>
+          <TargetFilename condition="end with">.hta</TargetFilename>
+        </Rule>
+        <Rule name="FileCreate_Temp_Msi" groupRelation="and">
+          <TargetFilename condition="contains">\Temp\</TargetFilename>
+          <TargetFilename condition="end with">.msi</TargetFilename>
+        </Rule>
+        <!-- Ejecutables y scripts en AppData (Local, Roaming, LocalLow) -->
+        <Rule name="FileCreate_AppData_Exe" groupRelation="and">
+          <TargetFilename condition="contains">\AppData\</TargetFilename>
+          <TargetFilename condition="end with">.exe</TargetFilename>
+        </Rule>
+        <Rule name="FileCreate_AppData_Dll" groupRelation="and">
+          <TargetFilename condition="contains">\AppData\</TargetFilename>
+          <TargetFilename condition="end with">.dll</TargetFilename>
+        </Rule>
+        <Rule name="FileCreate_AppData_Ps1" groupRelation="and">
+          <TargetFilename condition="contains">\AppData\</TargetFilename>
+          <TargetFilename condition="end with">.ps1</TargetFilename>
+        </Rule>
+        <Rule name="FileCreate_AppData_Bat" groupRelation="and">
+          <TargetFilename condition="contains">\AppData\</TargetFilename>
+          <TargetFilename condition="end with">.bat</TargetFilename>
+        </Rule>
+        <Rule name="FileCreate_AppData_Cmd" groupRelation="and">
+          <TargetFilename condition="contains">\AppData\</TargetFilename>
+          <TargetFilename condition="end with">.cmd</TargetFilename>
+        </Rule>
+        <Rule name="FileCreate_AppData_Vbs" groupRelation="and">
+          <TargetFilename condition="contains">\AppData\</TargetFilename>
+          <TargetFilename condition="end with">.vbs</TargetFilename>
+        </Rule>
+        <Rule name="FileCreate_AppData_Js" groupRelation="and">
+          <TargetFilename condition="contains">\AppData\</TargetFilename>
+          <TargetFilename condition="end with">.js</TargetFilename>
+        </Rule>
+        <Rule name="FileCreate_AppData_Hta" groupRelation="and">
+          <TargetFilename condition="contains">\AppData\</TargetFilename>
+          <TargetFilename condition="end with">.hta</TargetFilename>
+        </Rule>
+        <Rule name="FileCreate_AppData_Lnk" groupRelation="and">
+          <TargetFilename condition="contains">\AppData\</TargetFilename>
+          <TargetFilename condition="end with">.lnk</TargetFilename>
+        </Rule>
+      </FileCreate>
+    </RuleGroup>
+
+    <RuleGroup name="Sysmon_EID11_FileCreate_Exclude" groupRelation="or">
+      <FileCreate onmatch="exclude">
+        <!-- Archivos efímeros autogenerados por PowerShell para validación interna de política -->
+        <TargetFilename condition="contains">\__PSScriptPolicyTest_</TargetFilename>
+      </FileCreate>
+    </RuleGroup>
+
+    <!-- =================================================================== -->
+    <!-- MÓDULO 5: Sysmon Event ID 13 (RegistryEvent - Value Set)            -->
+    <!-- Estrategia: Auditar modificaciones de valores en claves clásicas de -->
+    <!-- persistencia de sesión y arranque (CurrentVersion\Run y RunOnce),  -->
+    <!-- cubriendo tanto HKLM como HKCU (normalizado por Sysmon a HKU\SID). -->
+    <!-- Técnica objetivo: T1547.001 (Registry Run Keys / Startup Folder).   -->
+    <!-- =================================================================== -->
+    <RuleGroup name="Sysmon_EID13_RegistryPersistence" groupRelation="or">
+      <RegistryEvent onmatch="include">
+        <TargetObject condition="contains">\CurrentVersion\Run\</TargetObject>
+        <TargetObject condition="contains">\CurrentVersion\RunOnce\</TargetObject>
+        <TargetObject condition="contains">\CurrentVersion\RunOnceEx\</TargetObject>
+        <TargetObject condition="end with">\CurrentVersion\Run</TargetObject>
+        <TargetObject condition="end with">\CurrentVersion\RunOnce</TargetObject>
+        <TargetObject condition="contains">\Policies\Explorer\Run</TargetObject>
+      </RegistryEvent>
+    </RuleGroup>
+
+    <!-- =================================================================== -->
+    <!-- MÓDULO 6: Sysmon Event ID 22 (DnsQuery)                             -->
+    <!-- Estrategia: Registrar resoluciones DNS por proceso para identificar -->
+    <!-- dominios sospechosos y beaconing, excluyendo tráfico local mDNS     -->
+    <!-- y búsquedas inversas ARPA sin valor de inteligencia.                -->
+    <!-- =================================================================== -->
+    <RuleGroup name="Sysmon_EID22_DnsQuery" groupRelation="or">
+      <DnsQuery onmatch="exclude">
+        <QueryName condition="end with">.arpa</QueryName>
+        <QueryName condition="end with">.local</QueryName>
+        <QueryName condition="is">localhost</QueryName>
+        <QueryName condition="is">wpad</QueryName>
+      </DnsQuery>
+    </RuleGroup>
+
+    <!-- =================================================================== -->
+    <!-- SILENCIAMIENTO EXPLÍCITO DE CANALES FUERA DE ALCANCE                -->
+    <!-- Evita que eventos activos por defecto en Sysmon (ej. ID 5           -->
+    <!-- ProcessTerminate o ID 6 DriverLoad) inunden el canal de ingesta.    -->
+    <!-- =================================================================== -->
+    <RuleGroup name="Sysmon_Silence_UnusedChannels" groupRelation="or">
+      <FileCreateTime onmatch="include" />
+      <ProcessTerminate onmatch="include" />
+      <DriverLoad onmatch="include" />
+      <ImageLoad onmatch="include" />
+      <CreateRemoteThread onmatch="include" />
+      <RawAccessRead onmatch="include" />
+      <FileCreateStreamHash onmatch="include" />
+      <PipeEvent onmatch="include" />
+      <WmiEvent onmatch="include" />
+      <FileDelete onmatch="include" />
+      <ProcessTampering onmatch="include" />
+      <FileDeleteDetected onmatch="include" />
+    </RuleGroup>
+
+  </EventFiltering>
+</Sysmon>
