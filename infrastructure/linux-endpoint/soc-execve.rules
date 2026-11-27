@@ -1,0 +1,10 @@
+# =============================================================================
+# Proyecto: Laboratorio SOC, Detection Engineering y Triaje Automatizado
+# Archivo:  infrastructure/linux-endpoint/soc-execve.rules
+# Autor:    Isaac Sánchez Samaniego
+# Objetivo: Reglas de auditoría de llamadas al sistema execve (64-bit)
+# =============================================================================
+-D
+-b 8192
+-f 1
+-a always,exit -F arch=b64 -S execve -k soc_execve

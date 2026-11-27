@@ -1,0 +1,63 @@
+{
+  "timestamp": "2026-11-27T02:04:37.250+0000",
+  "agent": {
+    "id": "003",
+    "name": "win-soc-endpoint",
+    "ip": "192.168.56.101"
+  },
+  "manager": {
+    "name": "wazuh.manager"
+  },
+  "id": "1795745077.3894669",
+  "full_log": "{\"win\":{\"system\":{\"providerName\":\"Microsoft-Windows-Sysmon\",\"providerGuid\":\"{5770385f-c22a-43e0-bf4c-06f5698ffbd9}\",\"eventID\":\"1\",\"version\":\"5\",\"level\":\"4\",\"task\":\"1\",\"opcode\":\"0\",\"keywords\":\"0x8000000000000000\",\"systemTime\":\"2026-11-27T02:02:00.0950565Z\",\"eventRecordID\":\"582\",\"processID\":\"5140\",\"threadID\":\"4856\",\"channel\":\"Microsoft-Windows-Sysmon/Operational\",\"computer\":\"WIN11-SOC-01\",\"severityValue\":\"INFORMATION\",\"message\":\"\\\"Process Create:\\r\\nRuleName: -\\r\\nUtcTime: 2026-11-27 02:02:00.090\\r\\nProcessGuid: {527729bb-e498-6b08-0602-000000000600}\\r\\nProcessId: 5072\\r\\nImage: C:\\\\Windows\\\\System32\\\\whoami.exe\\r\\nFileVersion: 10.0.26100.1882 (WinBuild.160101.0800)\\r\\nDescription: whoami - displays logged on user information\\r\\nProduct: Microsoft® Windows® Operating System\\r\\nCompany: Microsoft Corporation\\r\\nOriginalFileName: whoami.exe\\r\\nCommandLine: \\\"C:\\\\WINDOWS\\\\system32\\\\whoami.exe\\\"\\r\\nCurrentDirectory: C:\\\\WINDOWS\\\\system32\\\\\\r\\nUser: WIN11-SOC-01\\\\corp_user\\r\\nLogonGuid: {527729bb-e300-6b08-c7fd-040000000000}\\r\\nLogonId: 0x4FDC7\\r\\nTerminalSessionId: 1\\r\\nIntegrityLevel: High\\r\\nHashes: SHA256=23240EF9F8B0A9A324110B1C2331DE31DC1B0E08F5359CB707E51A939AF56CD3\\r\\nParentProcessGuid: {527729bb-e338-6b08-a800-000000000600}\\r\\nParentProcessId: 9012\\r\\nParentImage: C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe\\r\\nParentCommandLine: \\\"C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe\\\" \\r\\nParentUser: WIN11-SOC-01\\\\corp_user\\\"\"},\"eventdata\":{\"utcTime\":\"2026-11-27 02:02:00.090\",\"processGuid\":\"{527729bb-e498-6b08-0602-000000000600}\",\"processId\":\"5072\",\"image\":\"C:\\\\\\\\Windows\\\\\\\\System32\\\\\\\\whoami.exe\",\"fileVersion\":\"10.0.26100.1882 (WinBuild.160101.0800)\",\"description\":\"whoami - displays logged on user information\",\"product\":\"Microsoft® Windows® Operating System\",\"company\":\"Microsoft Corporation\",\"originalFileName\":\"whoami.exe\",\"commandLine\":\"\\\\\\\"C:\\\\\\\\WINDOWS\\\\\\\\system32\\\\\\\\whoami.exe\\\\\\\"\",\"currentDirectory\":\"C:\\\\\\\\WINDOWS\\\\\\\\system32\\\\\\\\\",\"user\":\"WIN11-SOC-01\\\\\\\\corp_user\",\"logonGuid\":\"{527729bb-e300-6b08-c7fd-040000000000}\",\"logonId\":\"0x4fdc7\",\"terminalSessionId\":\"1\",\"integrityLevel\":\"High\",\"hashes\":\"SHA256=23240EF9F8B0A9A324110B1C2331DE31DC1B0E08F5359CB707E51A939AF56CD3\",\"parentProcessGuid\":\"{527729bb-e338-6b08-a800-000000000600}\",\"parentProcessId\":\"9012\",\"parentImage\":\"C:\\\\\\\\Windows\\\\\\\\System32\\\\\\\\WindowsPowerShell\\\\\\\\v1.0\\\\\\\\powershell.exe\",\"parentCommandLine\":\"\\\\\\\"C:\\\\\\\\Windows\\\\\\\\System32\\\\\\\\WindowsPowerShell\\\\\\\\v1.0\\\\\\\\powershell.exe\\\\\\\"\",\"parentUser\":\"WIN11-SOC-01\\\\\\\\corp_user\"}}}",
+  "decoder": {
+    "name": "windows_eventchannel"
+  },
+  "data": {
+    "win": {
+      "system": {
+        "providerName": "Microsoft-Windows-Sysmon",
+        "providerGuid": "{5770385f-c22a-43e0-bf4c-06f5698ffbd9}",
+        "eventID": "1",
+        "version": "5",
+        "level": "4",
+        "task": "1",
+        "opcode": "0",
+        "keywords": "0x8000000000000000",
+        "systemTime": "2026-11-27T02:02:00.0950565Z",
+        "eventRecordID": "582",
+        "processID": "5140",
+        "threadID": "4856",
+        "channel": "Microsoft-Windows-Sysmon/Operational",
+        "computer": "WIN11-SOC-01",
+        "severityValue": "INFORMATION",
+        "message": "\"Process Create:\r\nRuleName: -\r\nUtcTime: 2026-11-27 02:02:00.090\r\nProcessGuid: {527729bb-e498-6b08-0602-000000000600}\r\nProcessId: 5072\r\nImage: C:\\Windows\\System32\\whoami.exe\r\nFileVersion: 10.0.26100.1882 (WinBuild.160101.0800)\r\nDescription: whoami - displays logged on user information\r\nProduct: Microsoft® Windows® Operating System\r\nCompany: Microsoft Corporation\r\nOriginalFileName: whoami.exe\r\nCommandLine: \"C:\\WINDOWS\\system32\\whoami.exe\"\r\nCurrentDirectory: C:\\WINDOWS\\system32\\\r\nUser: WIN11-SOC-01\\corp_user\r\nLogonGuid: {527729bb-e300-6b08-c7fd-040000000000}\r\nLogonId: 0x4FDC7\r\nTerminalSessionId: 1\r\nIntegrityLevel: High\r\nHashes: SHA256=23240EF9F8B0A9A324110B1C2331DE31DC1B0E08F5359CB707E51A939AF56CD3\r\nParentProcessGuid: {527729bb-e338-6b08-a800-000000000600}\r\nParentProcessId: 9012\r\nParentImage: C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\r\nParentCommandLine: \"C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe\" \r\nParentUser: WIN11-SOC-01\\corp_user\""
+      },
+      "eventdata": {
+        "utcTime": "2026-11-27 02:02:00.090",
+        "processGuid": "{527729bb-e498-6b08-0602-000000000600}",
+        "processId": "5072",
+        "image": "C:\\\\Windows\\\\System32\\\\whoami.exe",
+        "fileVersion": "10.0.26100.1882 (WinBuild.160101.0800)",
+        "description": "whoami - displays logged on user information",
+        "product": "Microsoft® Windows® Operating System",
+        "company": "Microsoft Corporation",
+        "originalFileName": "whoami.exe",
+        "commandLine": "\\\"C:\\\\WINDOWS\\\\system32\\\\whoami.exe\\\"",
+        "currentDirectory": "C:\\\\WINDOWS\\\\system32\\\\",
+        "user": "WIN11-SOC-01\\\\corp_user",
+        "logonGuid": "{527729bb-e300-6b08-c7fd-040000000000}",
+        "logonId": "0x4fdc7",
+        "terminalSessionId": "1",
+        "integrityLevel": "High",
+        "hashes": "SHA256=23240EF9F8B0A9A324110B1C2331DE31DC1B0E08F5359CB707E51A939AF56CD3",
+        "parentProcessGuid": "{527729bb-e338-6b08-a800-000000000600}",
+        "parentProcessId": "9012",
+        "parentImage": "C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe",
+        "parentCommandLine": "\\\"C:\\\\Windows\\\\System32\\\\WindowsPowerShell\\\\v1.0\\\\powershell.exe\\\"",
+        "parentUser": "WIN11-SOC-01\\\\corp_user"
+      }
+    }
+  },
+  "location": "EventChannel"
+}
